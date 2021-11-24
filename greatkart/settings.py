@@ -106,6 +106,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
+# AUTHENTICATION_BACKENDS = ("django.contrib.auth.backends.ModelBackend",)
+
 # Internationalization
 # https://docs.djangoproject.com/en/3.1/topics/i18n/
 
@@ -134,3 +137,21 @@ STATICFILES_DIRS = [
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+from django.contrib.messages import constants as messages
+
+MESSAGE_TAGS = {
+    messages.ERROR: "danger",
+    50: "critical",
+}
+
+LOGOUT_REDIRECT_URL = "login"
+LOGIN_REDIRECT_URL = "home"
+
+# SMTP CONFIGURATION
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'abdulazizprogrammer@gmail.com'
+EMAIL_HOST_PASSWORD = 'AbdulazizProgrammer123!!!'
+EMAIL_USE_TLS = True
