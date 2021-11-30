@@ -4,6 +4,9 @@ from accounts.models import Account
 from .forms import RegistrationForm
 from django.contrib import messages, auth
 from django.contrib.auth.decorators import login_required
+from carts.models import Cart, CartItem
+from carts.views import _cart_id
+import requests
 
 # Verification email
 from django.contrib.sites.shortcuts import get_current_site
@@ -66,14 +69,67 @@ def login(request):
     if request.method == "POST":
         email = request.POST["email"]
         password = request.POST["password"]
-        user = auth.get_user_model().objects.get(email=email)
-        is_correct = user.check_password(password)
-        if user is not None and is_correct:
-            auth.login(request, user)
-            messages.success(request, 'You are logged in')
-            return redirect("dashboard")
+        try:
+            user = Account.objects.get(email__exact=email)
+        except Account.DoesNotExist:
+            user = None
+
+        if user is not None:
+            is_correct = user.check_password(password)
+            if is_correct:
+                try:
+                    cart = Cart.objects.get(cart_id=_cart_id(request))
+                    is_cart_item_exists = CartItem.objects.filter(cart=cart).exists()
+                    if is_cart_item_exists:
+                        cart_item = CartItem.objects.filter(cart=cart)
+                        product_variation = []
+                        pr_ids = []
+                        for item in cart_item:
+                            # Getting the product variations by cart id
+                            variation = item.variations.all()
+                            product_variation.append(list(variation))
+                            pr_ids.append(item.id)
+
+                        cart_item = CartItem.objects.filter(user=user)
+                        ex_var_list = []
+                        id = []
+                        for item in cart_item:
+                            existing_variation = item.variations.all()
+                            ex_var_list.append(list(existing_variation))
+                            id.append(item.id)
+
+                        for pr in product_variation:
+                            if pr in ex_var_list:
+                                index = ex_var_list.index(pr)
+                                item_id = id[index]
+                                item = CartItem.objects.get(id=item_id)
+                                item.quantity += CartItem.objects.get(id=id[product_variation.index(pr)]).quantity
+                                item.user = user
+                                item.save()
+                            else:
+                                cart_item = CartItem.objects.filter(cart=cart)
+                                for item in cart_item:
+                                    item.user = user
+                                    item.save()
+                except:
+                    pass
+
+                auth.login(request, user)
+                messages.success(request, 'You are logged in')
+                url = request.META.get('HTTP_REFERER')
+                try:
+                    query = requests.utils.urlparse(url).query
+                    params = dict(x.split('=') for x in query.split('&'))
+                    if 'next' in params:
+                        nextPage = params['next']
+                        return redirect(nextPage)
+                except:
+                    return redirect("dashboard")
+            else:
+                messages.error(request, "Password incorrect")
+                return redirect("login")
         else:
-            messages.error(request, "Invalid login credentials")
+            messages.error(request, "No such user")
             return redirect("login")
 
     return render(request, "accounts/login.html")
@@ -150,6 +206,7 @@ def resetpassword_validate(request, uidb64, token):
         messages.error(request, 'This link has been expired')
         return redirect('login')
     return HttpResponse('Ok')
+
 
 def resetPassword(request):
     if request.method == 'POST':
