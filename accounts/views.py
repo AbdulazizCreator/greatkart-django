@@ -141,6 +141,7 @@ def logout(request):
     messages.success(request, "You are logged out.")
     return redirect("login")
 
+
 def activate(request, uidb64, token):
     try:
         uid = urlsafe_base64_decode(uidb64).decode()
