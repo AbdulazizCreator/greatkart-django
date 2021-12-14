@@ -1,23 +1,20 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, render, redirect
-
 from orders.models import OrderProduct
 from .forms import ReviewForm
-from .models import Product, ReviewRating
+from .models import Product, ReviewRating, ProductGallery
 from category.models import Category
 from carts.models import CartItem
 from carts.views import _cart_id
-from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
+from django.core.paginator import Paginator
 from django.db.models import Q
-
-# Create your views here.
 
 
 def store(request, category_slug=None):
     categories = None
     products = None
 
-    if category_slug != None:
+    if category_slug is not None:
         categories = get_object_or_404(Category, slug=category_slug)
         products = Product.objects.all().filter(category=categories, is_available=True)
     else:
@@ -45,33 +42,41 @@ def product_detail(request, category_slug, product_slug):
         raise e
 
     try:
-        orderproduct = OrderProduct.objects.filter(user=request.user, product_id=single_product.id).exists()
-    except:
-        orderproduct = None
-        
+        if request.user.is_authenticated:
+            is_ordered_product = OrderProduct.objects.filter(user=request.user, product_id=single_product.id).exists()
+        else:
+            is_ordered_product = None
+    except OrderProduct.DoesNotExist:
+        is_ordered_product = None
+
     # Get reviews
     reviews = ReviewRating.objects.filter(product_id=single_product.id, status=True)
 
-    context = {"single_product": single_product,
-               "in_cart": in_cart,
-               'reviews': reviews,
-               'range': list(range(1, 6)),
-               'orderproduct': orderproduct,
-               }
+    # Get the product gallery
+    product_gallery = ProductGallery.objects.filter(product_id=single_product.id)
 
+    context = \
+        {"single_product": single_product,
+         "in_cart": in_cart,
+         'reviews': reviews,
+         'range': list(range(1, 6)),
+         'is_ordered_product': is_ordered_product,
+         'product_gallery': product_gallery
+         }
 
     return render(request, "store/product_detail.html", context)
 
 
 def search(request):
+    products = None
+    product_count = 0
     if "keyword" in request.GET:
         keyword = request.GET["keyword"]
         if keyword:
             products = Product.objects.order_by("-created_date").filter(
                 Q(description__icontains=keyword) | Q(product_name__icontains=keyword)
             )
-
-    product_count = products.count()
+            product_count = products.count()
 
     context = {"products": products, "product_count": product_count}
     return render(request, "store/store.html", context)
@@ -82,7 +87,6 @@ def submit_review(request, product_id):
 
     if request.method == 'POST':
         try:
-            print(product_id)
             reviews = ReviewRating.objects.get(user__id=request.user.id, product__id=product_id)
             form = ReviewForm(request.POST, instance=reviews)
             form.save()
@@ -103,3 +107,17 @@ def submit_review(request, product_id):
 
                 messages.success(request, 'Thank you ! Your review has been submitted.')
                 return redirect(url)
+
+
+def apply_sort(request):
+    products = None
+    product_count = 0
+    if "min_price" and 'max_price' in request.GET:
+        min_price = request.GET["min_price"]
+        max_price = request.GET["max_price"]
+        products = Product.objects.all().filter(price__range=(min_price, max_price))
+        # if min_price > max_price:
+        #     messages.error(request, 'Max price should be larger than min price !')
+        #     return redirect('store')
+    context = {"products": products, "product_count": product_count}
+    return render(request, 'store/store.html', context)

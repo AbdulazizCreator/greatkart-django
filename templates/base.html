@@ -18,6 +18,7 @@
       type="image/x-icon"
       href="{% static 'images/favicon.png' %}"
     />
+
     <!-- jQuery -->
     <script
       src="{% static 'js/jquery-2.0.0.min.js'%}"
@@ -57,20 +58,9 @@
     <!-- Include the PayPal JavaScript SDK -->
     <script src="https://www.paypal.com/sdk/js?client-id=AVfQlN6NOnRuw7OFlACr6VPaljUOs-oTqiOkhRRzxgJ4cD1av98Z1xbGruw6V1mq5Z6wb85US-ey8cbN&currency=USD"></script>
 
-    <script type="text/javascript">
-      /// some script
-
-      // jquery ready start
-      $(document).ready(function () {
-        // jQuery code
-      });
-      // jquery end
-    </script>
   </head>
   <body>
-    <!-- navbar  -->
-  {% include 'includes/navbar.html'%} {% block content %} {% endblock %} 
+    {% include 'includes/navbar.html'%} {% block content %} {% endblock %}
     {% include 'includes/footer.html'%}
-    <!-- footer -->
   </body>
 </html>
